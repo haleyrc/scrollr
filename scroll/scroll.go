@@ -1,3 +1,11 @@
+// Pacakge scroll contains some utilities for processing and displaying
+// manageable chunks of an io.Reader. This was originally developed as a way to
+// scan large text files without thrashing memory or requiring a user to hold
+// down a key while scanning output.
+//
+// The speed of the output is variable to allow for varying skill or use cases
+// and either a hex+text representation similar to hexdump, or a simple text
+// output are currently available depending on need.
 package scroll
 
 import (
