@@ -9,14 +9,11 @@ import (
 	"github.com/haleyrc/scrollr/scroll"
 )
 
-const DefaultRate = time.Second
-const DefaultWidth = 2
-
 func main() {
 	var (
 		mult     = flag.Int("s", 1, "The speed multiplier. Default is some lines per minute.")
 		h        = flag.Bool("h", false, "Output hex instead of text.")
-		w        = flag.Int("w", DefaultWidth, "The width to display at once in hex output.")
+		w        = flag.Int("w", 2, "The width to display at once in hex output.")
 		filename = flag.String("f", "", "The file to display.")
 	)
 	flag.Parse()
@@ -33,7 +30,7 @@ func main() {
 	}
 	defer f.Close()
 
-	speed := DefaultRate / time.Duration(*mult)
+	speed := time.Second / time.Duration(*mult)
 	if *h {
 		scroll.NewScroller(scroll.NewHexScroller(f, *w)).Start(speed)
 	} else {

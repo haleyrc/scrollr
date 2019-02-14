@@ -11,20 +11,32 @@ import (
 	tb "github.com/nsf/termbox-go"
 )
 
-type ScrollRunner interface {
+// Runner describes an interface consisting of a single Run method.
+// Implementations of Runner are expected to process a single "line" of
+// input for each call to Run. At the moment, it is acceptable to exit from
+// within Run, though this is likely to change.
+type Runner interface {
 	Run()
 }
 
-func NewScroller(sr ScrollRunner) Scroller {
+// NewScroller returns a Scroller that uses the provided Runner to process input.
+func NewScroller(sr Runner) Scroller {
 	return Scroller{
-		ScrollRunner: sr,
+		Runner: sr,
 	}
 }
 
+// Scroller manages the event loop for processing input using a Runner. It
+// listens for key events to pause or exit the program, and calls Runner on the
+// user-specified schedule.
 type Scroller struct {
-	ScrollRunner
+	Runner
 }
 
+// Start runs two goroutines in parallel. The first waits for keyboard input to
+// either pause or exist the program. The second runs the primary processing
+// loop which calls the underlying Runner's Run method with the provided
+// frequency.
 func (s Scroller) Start(speed time.Duration) {
 	kb := make(chan int, 1)
 	if err := tb.Init(); err != nil {
@@ -53,21 +65,27 @@ func (s Scroller) Start(speed time.Duration) {
 			if paused {
 				continue
 			}
-			s.ScrollRunner.Run()
+			s.Runner.Run()
 		case <-kb:
 			paused = !paused
 		}
 	}
 }
 
+// NewTextScroller returns an implementation of Runner that simply outputs the
+// lines of the input reader as text.
 func NewTextScroller(r io.Reader) TextScroller {
 	return TextScroller{bufio.NewScanner(r)}
 }
 
+// TextScroller implements Runner and simply outputs the lines of the input
+// reader as text.
 type TextScroller struct {
 	scanner *bufio.Scanner
 }
 
+// Run implements Runner and simply scans successive lines of text and outputs
+// them unmodified to stdout.
 func (s TextScroller) Run() {
 	if more := s.scanner.Scan(); more {
 		fmt.Println(s.scanner.Text())
@@ -78,18 +96,26 @@ func (s TextScroller) Run() {
 	}
 }
 
-func NewHexScroller(r io.Reader, width int) HexScroller {
+// NewHexScroller returns an implementation of Runner that outputs the hex
+// representation of input from r in w columns of 8 bytes each, along with the
+// string representation similar to the output of hexdump.
+func NewHexScroller(r io.Reader, w int) HexScroller {
 	return HexScroller{
 		reader: bufio.NewReader(r),
-		buf:    make([]byte, width*8),
+		buf:    make([]byte, w*8),
 	}
 }
 
+// HexScroller implements Runner and outputs the hex representation of input
+// from r in w columns of 8 bytes each, along with the string representation
+// similar to the output of hexdump.
 type HexScroller struct {
 	reader *bufio.Reader
 	buf    []byte
 }
 
+// Run implements Runner and reads the bytes of the input in 8*width sized
+// chunks, displaying them cleanly alongside their string representation.
 func (s HexScroller) Run() {
 	if _, err := s.reader.Read(s.buf); err != nil {
 		if err == io.EOF {
